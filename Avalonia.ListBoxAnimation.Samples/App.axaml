@@ -16,7 +16,7 @@
     <Application.Styles>
         <FluentTheme Mode="Dark" />
         <Style Selector=":is(SelectingItemsControl)">
-            <Setter Property="local:SelectingItemControlExtension.EnableSelectionAnimation" Value="True" />
+            <Setter Property="local:SelectingItemsControlExtension.EnableSelectionAnimation" Value="True" />
         </Style>
         <Style Selector="ListBoxItem">
             <Setter Property="Theme" Value="{StaticResource ListBoxItemNew}" />

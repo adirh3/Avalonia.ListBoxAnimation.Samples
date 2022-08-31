@@ -11,13 +11,13 @@ using Avalonia.VisualTree;
 
 namespace Avalonia.ListBoxAnimation.Samples;
 
-public class SelectingItemControlExtension
+public class SelectingItemsControlExtension
 {
     public static readonly AttachedProperty<bool> EnableSelectionAnimationProperty =
         AvaloniaProperty.RegisterAttached<SelectingItemsControl, bool>("EnableSelectionAnimation",
-            typeof(SelectingItemControlExtension));
+            typeof(SelectingItemsControlExtension));
 
-    static SelectingItemControlExtension()
+    static SelectingItemsControlExtension()
     {
         EnableSelectionAnimationProperty.Changed.AddClassHandler<Control>(OnEnableSelectionAnimation);
     }
