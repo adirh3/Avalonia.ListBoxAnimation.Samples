@@ -1,6 +1,12 @@
 # Avalonia.ListBoxAnimation.Samples
 Simple item selection animation using Avalonia 11
 
+
+https://user-images.githubusercontent.com/27368554/187793478-164def31-b2e9-4493-81f1-73a5b4275839.mp4
+
+
+
+
 To make this kind of animation work you need 3 things -
 
 ## Indicator visual
