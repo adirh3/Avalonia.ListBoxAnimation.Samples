@@ -1,0 +1,57 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:system="clr-namespace:System;assembly=System.Runtime">
+    <system:Double x:Key="ListBoxItemPipeHeight">22</system:Double>
+    <ControlTheme x:Key="ListBoxItemNew" TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
+        <Setter Property="CornerRadius" Value="{DynamicResource OverlayCornerRadius}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource ButtonBorderBrush}" />
+        <Setter Property="ClipToBounds" Value="False" />
+        <Setter Property="Margin" Value="2" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Panel Margin="{TemplateBinding Margin}">
+                    <Border
+                        Width="3.5"
+                        ZIndex="1"
+                        Height="{DynamicResource ListBoxItemPipeHeight}"
+                        Name="PART_SelectedPipe"
+                        CornerRadius="15"
+                        ClipToBounds="False"
+                        VerticalAlignment="Center"
+                        HorizontalAlignment="Left"
+                        Background="{DynamicResource SystemControlHighlightListAccentLowBrush}" />
+                    <ContentPresenter Name="PART_ContentPresenter"
+                                      ZIndex="0"
+                                      BorderBrush="{TemplateBinding BorderBrush}"
+                                      CornerRadius="{TemplateBinding CornerRadius}"
+                                      ContentTemplate="{TemplateBinding ContentTemplate}"
+                                      Content="{TemplateBinding Content}"
+                                      FontWeight="Normal"
+                                      FontSize="{DynamicResource ControlContentThemeFontSize}"
+                                      Padding="{TemplateBinding Padding}"
+                                      VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                                      HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}" />
+                </Panel>
+            </ControlTemplate>
+        </Setter>
+
+
+        <Style Selector="^:selected /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundAltMediumBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
+        
+        <Style Selector="^ /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+
+        <Style Selector="^:selected /template/ Border#PART_SelectedPipe">
+            <Setter Property="IsVisible" Value="True" />
+        </Style>
+
+        <Style Selector="^ /template/ Border#PART_SelectedPipe">
+            <Setter Property="IsVisible" Value="False" />
+        </Style>
+    </ControlTheme>
+</ResourceDictionary>
