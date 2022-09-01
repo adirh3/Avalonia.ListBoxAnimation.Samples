@@ -74,7 +74,7 @@ float offset = isVerticalOffset ? selectionOffset.Y : selectionOffset.X;
 ```
 Using that information we create a simple `Offset` animation between the old position and the new position!
 
-```
+```C#
 // Create new offset animation between old selection position to the current position
 Vector3KeyFrameAnimation offsetAnimation = compositor.CreateVector3KeyFrameAnimation();
 offsetAnimation.Target = "Offset";
