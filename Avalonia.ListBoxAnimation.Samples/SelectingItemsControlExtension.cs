@@ -73,7 +73,7 @@ public class SelectingItemsControlExtension
 
         Compositor compositor = pipeVisual.Compositor;
         // This is required
-        await compositor.RequestCommitAsync();
+        // await compositor.RequestCommitAsync();
         var quadraticEaseIn = new QuadraticEaseIn();
 
         // Create new offset animation between old selection position to the current position
