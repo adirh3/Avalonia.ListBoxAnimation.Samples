@@ -7,7 +7,6 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Templates;
 using Avalonia.Rendering.Composition;
 using Avalonia.Rendering.Composition.Animations;
-using Avalonia.VisualTree;
 
 namespace Avalonia.ListBoxAnimation.Samples;
 
@@ -45,18 +44,22 @@ public class SelectingItemsControlExtension
             return;
 
         if (selectingItemsControl.ItemContainerGenerator
-                .ContainerFromIndex(newIndex) is not ContentControl newSelection ||
-            selectingItemsControl.ItemContainerGenerator.ContainerFromIndex(oldIndex) is not Visual oldSelection)
+                .ContainerFromIndex(newIndex) is not TemplatedControl newSelection ||
+            selectingItemsControl.ItemContainerGenerator.ContainerFromIndex(oldIndex) is not TemplatedControl
+                oldSelection)
             return;
         StartOffsetAnimation(newSelection, oldSelection);
     }
 
-    private static async void StartOffsetAnimation(TemplatedControl newSelection, Visual oldSelection)
+    private static void StartOffsetAnimation(TemplatedControl newSelection, TemplatedControl oldSelection)
     {
         // Find the indicator border
         if (newSelection.GetTemplateChildren().FirstOrDefault(s => s.Name == "PART_SelectedPipe") is not Visual
-            borderPipe)
+                borderPipe || oldSelection.GetTemplateChildren()
+                .FirstOrDefault(s => s.Name == "PART_SelectedPipe") is not Visual oldPipe)
             return;
+        // Clear old implicit animations if any
+        ElementComposition.GetElementVisual(oldPipe)?.ImplicitAnimations?.Clear();
 
         // Get the composition visuals for all controls
         CompositionVisual? pipeVisual = ElementComposition.GetElementVisual(borderPipe);
@@ -73,16 +76,18 @@ public class SelectingItemsControlExtension
 
         Compositor compositor = pipeVisual.Compositor;
         // This is required
-        // await compositor.RequestCommitAsync();
-        var quadraticEaseIn = new QuadraticEaseIn();
+        var quadraticEaseIn = new QuadraticEaseInOut();
 
         // Create new offset animation between old selection position to the current position
         Vector3KeyFrameAnimation offsetAnimation = compositor.CreateVector3KeyFrameAnimation();
         offsetAnimation.Target = "Offset";
-        offsetAnimation.InsertKeyFrame(0f,
-            isVerticalOffset ? pipeVisual.Offset with {Y = offset} : pipeVisual.Offset with {X = offset},
-            quadraticEaseIn);
-        offsetAnimation.InsertKeyFrame(1f, pipeVisual.Offset, quadraticEaseIn);
+        string expression = (offset > 0 ? "+" : "-") + Math.Abs(offset);
+        offsetAnimation.InsertExpressionKeyFrame(0f,
+            isVerticalOffset
+                ? $"Vector3(this.FinalValue.X, this.FinalValue.Y{expression}, 0)"
+                : $"Vector3(this.FinalValue.X{expression}, this.FinalValue.Y, 0)"
+        );
+        offsetAnimation.InsertExpressionKeyFrame(1f, "this.FinalValue");
         offsetAnimation.Duration = TimeSpan.FromMilliseconds(250);
 
         // Create small scale animation so the pipe will "stretch" while it's moving
@@ -98,7 +103,14 @@ public class SelectingItemsControlExtension
         CompositionAnimationGroup compositionAnimationGroup = compositor.CreateAnimationGroup();
         compositionAnimationGroup.Add(offsetAnimation);
         compositionAnimationGroup.Add(scaleAnimation);
-        pipeVisual.StartAnimationGroup(compositionAnimationGroup);
+        ImplicitAnimationCollection pipeVisualImplicitAnimations = compositor.CreateImplicitAnimationCollection();
+        float currentOffset = isVerticalOffset ? pipeVisual.Offset.Y : pipeVisual.Offset.X;
+        if (currentOffset == 0) // Visual first shown, offset not calculated, lets trigger using Offset
+            pipeVisualImplicitAnimations["Offset"] = compositionAnimationGroup;
+        else // Visual already shown, we can't trigger on Offset as it won't change
+            pipeVisualImplicitAnimations["Visible"] = compositionAnimationGroup;
+
+        pipeVisual.ImplicitAnimations = pipeVisualImplicitAnimations;
     }
 
     public static bool GetEnableSelectionAnimation(SelectingItemsControl element)
