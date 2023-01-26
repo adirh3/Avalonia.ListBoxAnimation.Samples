@@ -5,7 +5,7 @@ using Avalonia.Animation.Easings;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Templates;
-using Avalonia.Rendering.Composition; 
+using Avalonia.Rendering.Composition;
 using Avalonia.VisualTree;
 
 namespace Avalonia.ListBoxAnimation.Samples;
@@ -24,7 +24,7 @@ public class SelectingItemsControlExtension
     private static void OnEnableSelectionAnimation(Control control, AvaloniaPropertyChangedEventArgs args)
     {
         if (control is not SelectingItemsControl listBox) return;
-        
+
         if (args.NewValue is true)
         {
             listBox.PropertyChanged += SelectingItemsControlPropertyChanged;
@@ -42,16 +42,24 @@ public class SelectingItemsControlExtension
             args.OldValue is not int oldIndex || args.NewValue is not int newIndex)
             return;
 
-        if (oldIndex == -1 || newIndex == -1)
-        {
-            // TODO: handle selection removal.
-        }
+        var newSelection = selectingItemsControl.ItemContainerGenerator
+            .ContainerFromIndex(newIndex) as ContentControl;
+        var oldSelection = selectingItemsControl.ItemContainerGenerator
+            .ContainerFromIndex(oldIndex) as ContentControl;
 
-        if (selectingItemsControl.ItemContainerGenerator
-                .ContainerFromIndex(newIndex) is not ContentControl newSelection ||
-            selectingItemsControl.ItemContainerGenerator
-                .ContainerFromIndex(oldIndex) is not ContentControl oldSelection)
+        if (newSelection is not { } || oldSelection is not { })
+        {
+            var target = newSelection ?? oldSelection;
+
+            if (target is not { } ||
+                target.GetTemplateChildren().FirstOrDefault(s => s.Name == "PART_SelectedPipe") is not Visual
+                    targetInd)
+                return;
+
+            PlaySingleSelectedIndicator(targetInd);
+
             return;
+        }
 
         Console.WriteLine($"{oldIndex} -> {newIndex}");
 
@@ -108,7 +116,7 @@ public class SelectingItemsControlExtension
         if (indicator == null) return;
         var visual = ElementComposition.GetElementVisual(indicator);
         if (visual == null) return;
-        
+
         var comp = visual.Compositor;
         var duration = TimeSpan.FromSeconds(0.6);
         var size = indicator.Bounds.Size;
@@ -153,10 +161,30 @@ public class SelectingItemsControlExtension
         centerAnim.InsertKeyFrame(1.0f, ScalarModifier(visual.CenterPoint, c2), singleStep);
         centerAnim.Duration = duration;
         centerAnim.Target = "CenterPoint";
-        
+
         compositionAnimationGroup.Add(scaleAnim);
         compositionAnimationGroup.Add(centerAnim);
         visual.StartAnimationGroup(compositionAnimationGroup);
+    }
+
+
+    private static void PlaySingleSelectedIndicator(Visual? indicator, bool isForward = true)
+    {
+        if (indicator == null) return;
+        var visual = ElementComposition.GetElementVisual(indicator);
+        if (visual == null) return;
+
+        var comp = visual.Compositor;
+        var duration = TimeSpan.FromSeconds(0.4);
+
+        var scaleAnim = comp.CreateVector3KeyFrameAnimation();
+
+        scaleAnim.InsertKeyFrame(0f, new Vector3(1, (isForward ? 0 : 1), 1));
+        scaleAnim.InsertKeyFrame(1.0f, new Vector3(1, (isForward ? 1 : 0), 1), new
+            CircularEaseInOut());
+        scaleAnim.Duration = duration;
+
+        visual.StartAnimation("Scale", scaleAnim);
     }
 
 

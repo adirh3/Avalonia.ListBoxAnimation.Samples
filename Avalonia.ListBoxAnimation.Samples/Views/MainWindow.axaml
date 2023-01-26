@@ -12,6 +12,6 @@
     </Design.DataContext>
     <DockPanel LastChildFill="True">
         <TabControl DockPanel.Dock="Top" Items="{Binding Tabs}" Background="Transparent" />
-        <ListBox Items="{Binding Items}" VirtualizationMode="None" />
+        <ListBox Items="{Binding Items}"  />
     </DockPanel>
 </Window>
