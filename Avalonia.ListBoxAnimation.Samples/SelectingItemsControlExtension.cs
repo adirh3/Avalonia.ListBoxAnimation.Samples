@@ -60,9 +60,7 @@ public class SelectingItemsControlExtension
 
             return;
         }
-
-        Console.WriteLine($"{oldIndex} -> {newIndex}");
-
+        
         StartOffsetAnimation(newSelection, oldSelection);
     }
 
@@ -155,8 +153,6 @@ public class SelectingItemsControlExtension
         var c1 = isForward ? 0.0f : dimension;
         var c2 = isForward ? dimension : 0.0f;
 
-        Console.WriteLine($"c {c1} - {c2}");
-
         centerAnim.InsertKeyFrame(0.0f, ScalarModifier(visual.CenterPoint, c1));
         centerAnim.InsertKeyFrame(1.0f, ScalarModifier(visual.CenterPoint, c2), singleStep);
         centerAnim.Duration = duration;
@@ -186,8 +182,7 @@ public class SelectingItemsControlExtension
 
         visual.StartAnimation("Scale", scaleAnim);
     }
-
-
+    
     private class StepEasing : IEasing
     {
         public double Ease(double progress)
