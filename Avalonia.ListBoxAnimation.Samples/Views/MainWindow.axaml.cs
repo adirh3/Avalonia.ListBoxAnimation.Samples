@@ -1,12 +1,18 @@
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Markup.Xaml;
 
-namespace Avalonia.ListBoxAnimation.Samples.Views
+namespace Avalonia.ListBoxAnimation.Samples.Views;
+
+
+public partial class MainWindow : Window
 {
-    public partial class MainWindow : Window
+    public MainWindow()
     {
-        public MainWindow()
-        {
-            InitializeComponent();
-        }
+
+        AvaloniaXamlLoader.Load(this);
+#if DEBUG
+        this.AttachDevTools();  
+#endif
     }
 }
