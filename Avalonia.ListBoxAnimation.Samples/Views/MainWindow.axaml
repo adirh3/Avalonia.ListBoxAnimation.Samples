@@ -10,8 +10,8 @@
     <Design.DataContext>
         <vm:MainWindowViewModel />
     </Design.DataContext>
-    <StackPanel>
-        <TabControl Items="{Binding Tabs}" Background="Transparent" />
-        <ListBox Items="{Binding Items}" />
-    </StackPanel>
+    <DockPanel LastChildFill="True">
+        <TabControl DockPanel.Dock="Top" Items="{Binding Tabs}" Background="Transparent" />
+        <ListBox Items="{Binding Items}" VirtualizationMode="None" />
+    </DockPanel>
 </Window>
