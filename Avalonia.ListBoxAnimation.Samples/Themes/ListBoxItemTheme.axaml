@@ -11,11 +11,10 @@
             <ControlTemplate>
                 <Panel Margin="{TemplateBinding Margin}">
                     <Border
-                        Width="3.5"
+                        Width="4"
                         ZIndex="1"
                         Height="{DynamicResource ListBoxItemPipeHeight}"
                         Name="PART_SelectedPipe"
-                        CornerRadius="15"
                         ClipToBounds="False"
                         VerticalAlignment="Center"
                         HorizontalAlignment="Left"
@@ -47,11 +46,11 @@
         </Style>
 
         <Style Selector="^:selected /template/ Border#PART_SelectedPipe">
-            <Setter Property="IsVisible" Value="True" />
+            <Setter Property="Opacity" Value="1" />
         </Style>
-
+        
         <Style Selector="^ /template/ Border#PART_SelectedPipe">
-            <Setter Property="IsVisible" Value="False" />
+            <Setter Property="Opacity" Value="0" />
         </Style>
     </ControlTheme>
 </ResourceDictionary>

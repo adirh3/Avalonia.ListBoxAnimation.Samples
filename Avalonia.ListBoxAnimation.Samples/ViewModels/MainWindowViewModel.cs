@@ -8,12 +8,12 @@ namespace Avalonia.ListBoxAnimation.Samples.ViewModels
     {
         public MainWindowViewModel()
         {
-            for (int i = 0; i < 5; i++)
+            for (var i = 0; i < 5; i++)
             {
                 Tabs.Add("Tab " + i);
             }
             
-            for (int i = 0; i < 30; i++)
+            for (var i = 0; i < 30; i++)
             {
                 Items.Add("Item " + i);
             }

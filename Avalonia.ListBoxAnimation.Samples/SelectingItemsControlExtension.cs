@@ -6,7 +6,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Templates;
 using Avalonia.Rendering.Composition;
-using Avalonia.Rendering.Composition.Animations;
+using Avalonia.VisualTree;
 
 namespace Avalonia.ListBoxAnimation.Samples;
 
@@ -23,16 +23,15 @@ public class SelectingItemsControlExtension
 
     private static void OnEnableSelectionAnimation(Control control, AvaloniaPropertyChangedEventArgs args)
     {
-        if (control is SelectingItemsControl listBox)
+        if (control is not SelectingItemsControl listBox) return;
+
+        if (args.NewValue is true)
         {
-            if (args.NewValue is true)
-            {
-                listBox.PropertyChanged += SelectingItemsControlPropertyChanged;
-            }
-            else
-            {
-                listBox.PropertyChanged -= SelectingItemsControlPropertyChanged;
-            }
+            listBox.PropertyChanged += SelectingItemsControlPropertyChanged;
+        }
+        else
+        {
+            listBox.PropertyChanged -= SelectingItemsControlPropertyChanged;
         }
     }
 
@@ -43,74 +42,153 @@ public class SelectingItemsControlExtension
             args.OldValue is not int oldIndex || args.NewValue is not int newIndex)
             return;
 
-        if (selectingItemsControl.ItemContainerGenerator
-                .ContainerFromIndex(newIndex) is not TemplatedControl newSelection ||
-            selectingItemsControl.ItemContainerGenerator.ContainerFromIndex(oldIndex) is not TemplatedControl
-                oldSelection)
+        var newSelection = selectingItemsControl.ItemContainerGenerator
+            .ContainerFromIndex(newIndex) as ContentControl;
+        var oldSelection = selectingItemsControl.ItemContainerGenerator
+            .ContainerFromIndex(oldIndex) as ContentControl;
+
+        if (newSelection is not { } || oldSelection is not { })
+        {
+            var target = newSelection ?? oldSelection;
+
+            if (target is not { } ||
+                target.GetTemplateChildren().FirstOrDefault(s => s.Name == "PART_SelectedPipe") is not Visual
+                    targetInd)
+                return;
+
+            PlaySingleSelectedIndicator(targetInd);
+ 
             return;
+        }
+        
         StartOffsetAnimation(newSelection, oldSelection);
     }
 
-    private static void StartOffsetAnimation(TemplatedControl newSelection, TemplatedControl oldSelection)
+    private static void StartOffsetAnimation(TemplatedControl nextSelection, TemplatedControl prevSelection)
     {
         // Find the indicator border
-        if (newSelection.GetTemplateChildren().FirstOrDefault(s => s.Name == "PART_SelectedPipe") is not Visual
-                borderPipe || oldSelection.GetTemplateChildren()
-                .FirstOrDefault(s => s.Name == "PART_SelectedPipe") is not Visual oldPipe)
+        if (prevSelection.GetTemplateChildren().FirstOrDefault(s => s.Name == "PART_SelectedPipe") is not Visual
+                prevInd ||
+            nextSelection.GetTemplateChildren().FirstOrDefault(s => s.Name == "PART_SelectedPipe") is not Visual
+                nextInd)
+        {
             return;
-        // Clear old implicit animations if any
-        ElementComposition.GetElementVisual(oldPipe)?.ImplicitAnimations?.Clear();
+        }
 
-        // Get the composition visuals for all controls
-        CompositionVisual? pipeVisual = ElementComposition.GetElementVisual(borderPipe);
-        CompositionVisual? newSelectionVisual = ElementComposition.GetElementVisual(newSelection);
-        CompositionVisual? oldSelectionVisual = ElementComposition.GetElementVisual(oldSelection);
-        if (pipeVisual == null || newSelectionVisual == null || oldSelectionVisual == null) return;
+        var tmpPrevPos = prevInd.GetVisualRoot()?.TransformToVisual(prevInd)?.Transform(new Point(0, 0));
+        var tmpNextPos = nextInd.GetVisualRoot()?.TransformToVisual(nextInd)?.Transform(new Point(0, 0));
+        var tmpDelta = tmpPrevPos - tmpNextPos;
 
-        // Calculate the offset between old and new selections
-        Vector3 selectionOffset = oldSelectionVisual.Offset - newSelectionVisual.Offset;
-        // Check whether the offset is vertical (e.g. ListBox) or horizontal (e.g. TabControl)
-        // Note this code assumes the items are aligned in the SelectingItemsControl
-        bool isVerticalOffset = selectionOffset.Y != 0;
-        float offset = isVerticalOffset ? selectionOffset.Y : selectionOffset.X;
+        if (tmpDelta is not { } deltaPos ||
+            deltaPos is { X: > 0, Y: > 0 } ||
+            tmpNextPos is not { } nextPos ||
+            tmpPrevPos is not { } prevPos)
+        {
+            return;
+        }
 
-        Compositor compositor = pipeVisual.Compositor;
-        // This is required
-        var quadraticEaseIn = new QuadraticEaseInOut();
+        var isVertical = deltaPos is { X: 0 };
+        var dist = (float)Math.Abs(deltaPos.X + (float)deltaPos.Y);
+        var prevSize = prevInd.Bounds.Size;
+        var nextSize = nextInd.Bounds.Size;
 
-        // Create new offset animation between old selection position to the current position
-        Vector3KeyFrameAnimation offsetAnimation = compositor.CreateVector3KeyFrameAnimation();
-        offsetAnimation.Target = "Offset";
-        string expression = (offset > 0 ? "+" : "-") + Math.Abs(offset);
-        offsetAnimation.InsertExpressionKeyFrame(0f,
-            isVerticalOffset
-                ? $"Vector3(this.FinalValue.X, this.FinalValue.Y{expression}, 0)"
-                : $"Vector3(this.FinalValue.X{expression}, this.FinalValue.Y, 0)"
-        );
-        offsetAnimation.InsertExpressionKeyFrame(1f, "this.FinalValue");
-        offsetAnimation.Duration = TimeSpan.FromMilliseconds(250);
+        var dir = (isVertical ? nextPos.Y : nextPos.X) > (isVertical ? prevPos.Y : prevPos.X);
 
-        // Create small scale animation so the pipe will "stretch" while it's moving
-        Vector3KeyFrameAnimation scaleAnimation = compositor.CreateVector3KeyFrameAnimation();
-        scaleAnimation.Target = "Scale";
-        scaleAnimation.InsertKeyFrame(0f, Vector3.One, quadraticEaseIn);
-        scaleAnimation.InsertKeyFrame(0.5f,
-            new Vector3(1f + (!isVerticalOffset ? 0.75f : 0f), 1f + (isVerticalOffset ? 0.75f : 0f), 1f),
-            quadraticEaseIn);
-        scaleAnimation.InsertKeyFrame(1f, Vector3.One, quadraticEaseIn);
-        scaleAnimation.Duration = TimeSpan.FromMilliseconds(250);
+        ResetIndicator(prevInd);
 
-        CompositionAnimationGroup compositionAnimationGroup = compositor.CreateAnimationGroup();
-        compositionAnimationGroup.Add(offsetAnimation);
-        compositionAnimationGroup.Add(scaleAnimation);
-        ImplicitAnimationCollection pipeVisualImplicitAnimations = compositor.CreateImplicitAnimationCollection();
-        float currentOffset = isVerticalOffset ? pipeVisual.Offset.Y : pipeVisual.Offset.X;
-        if (currentOffset == 0) // Visual first shown, offset not calculated, lets trigger using Offset
-            pipeVisualImplicitAnimations["Offset"] = compositionAnimationGroup;
-        else // Visual already shown, we can't trigger on Offset as it won't change
-            pipeVisualImplicitAnimations["Visible"] = compositionAnimationGroup;
+        PlayIndicatorAnimations(nextInd, isVertical, dir, dist, prevSize, nextSize);
+    }
 
-        pipeVisual.ImplicitAnimations = pipeVisualImplicitAnimations;
+    private static void ResetIndicator(Visual? indicator, float opacity = 0)
+    {
+        if (indicator == null) return;
+        var visual = ElementComposition.GetElementVisual(indicator);
+        if (visual == null) return;
+        visual.Opacity = opacity;
+    }
+
+
+    private static void PlayIndicatorAnimations(Visual? indicator, bool isVertical, bool isForward, float distance,
+        Size beginSize, Size endSize)
+    {
+        if (indicator == null) return;
+        var visual = ElementComposition.GetElementVisual(indicator);
+        if (visual == null) return;
+
+        var comp = visual.Compositor;
+        var duration = TimeSpan.FromSeconds(0.6);
+        var size = indicator.Bounds.Size;
+        var dimension = (float)(isVertical ? size.Height : size.Width);
+
+        float beginScale, endScale;
+
+        if (isVertical)
+        {
+            beginScale = (float)(beginSize.Height / size.Height);
+            endScale = (float)(endSize.Height / size.Height);
+        }
+        else
+        {
+            beginScale = (float)(beginSize.Width / size.Width);
+            endScale = (float)(endSize.Width / size.Width);
+        }
+
+
+        var singleStep = new StepEasing();
+        var compositionAnimationGroup = comp.CreateAnimationGroup();
+
+
+        Vector3 ScalarModifier(Vector3 reference, float scalar = 1f) =>
+            isVertical ? reference with { Y = scalar } : reference with { X = scalar };
+
+        var scaleAnim = comp.CreateVector3KeyFrameAnimation();
+        var s2 = Math.Abs(distance) / dimension + (isForward ? endScale : beginScale);
+
+        scaleAnim.InsertKeyFrame(0f, ScalarModifier(visual.Scale, s2));
+        scaleAnim.InsertKeyFrame(1.0f, ScalarModifier(visual.Scale, endScale), new CircularEaseInOut());
+        scaleAnim.Duration = duration;
+        scaleAnim.Target = "Scale";
+
+        var centerAnim = comp.CreateVector3KeyFrameAnimation();
+        var c1 = isForward ? 0.0f : dimension;
+        var c2 = isForward ? dimension : 0.0f;
+
+        centerAnim.InsertKeyFrame(0.0f, ScalarModifier(visual.CenterPoint, c1));
+        centerAnim.InsertKeyFrame(1.0f, ScalarModifier(visual.CenterPoint, c2), singleStep);
+        centerAnim.Duration = duration;
+        centerAnim.Target = "CenterPoint";
+
+        compositionAnimationGroup.Add(scaleAnim);
+        compositionAnimationGroup.Add(centerAnim);
+        visual.StartAnimationGroup(compositionAnimationGroup);
+    }
+
+
+    private static void PlaySingleSelectedIndicator(Visual? indicator, bool isForward = true)
+    {
+        if (indicator == null) return;
+        var visual = ElementComposition.GetElementVisual(indicator);
+        if (visual == null) return;
+
+        var comp = visual.Compositor;
+        var duration = TimeSpan.FromSeconds(0.4);
+
+        var scaleAnim = comp.CreateVector3KeyFrameAnimation();
+
+        scaleAnim.InsertKeyFrame(0f, new Vector3(1, (isForward ? 0 : 1), 1));
+        scaleAnim.InsertKeyFrame(1.0f, new Vector3(1, (isForward ? 1 : 0), 1), new
+            CircularEaseInOut());
+        scaleAnim.Duration = duration;
+
+        visual.StartAnimation("Scale", scaleAnim);
+    }
+    
+    private class StepEasing : IEasing
+    {
+        public double Ease(double progress)
+        {
+            return Math.Abs(progress - 1) < double.Epsilon ? 1d : 0d;
+        }
     }
 
     public static bool GetEnableSelectionAnimation(SelectingItemsControl element)
